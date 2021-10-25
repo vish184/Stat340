@@ -1,0 +1,231 @@
+---
+title: "STAT340 Exam 1: Take Home"
+author: "Keith Levin and Bi Cheng Wu"
+date: "Fall 2021"
+output: html_document
+---
+
+<style>
+div.level2{margin-bottom:40px;padding-top:20px;}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=T,eval=T,cache=T)
+```
+
+This exam must be completed and returned by the due date listed on Canvas.
+
+1. You __may not__ use late days to extend the due date of this exam.
+2. You may consult lecture notes, readings and R documentation. You __may not__ look up any information online (i.e., no Wikipedia, no Stackoverflow, etc), except where indicated.
+4. You __may not__ discuss this exam with anyone aside from the instructors and TAs of STAT340.
+
+Violation if these or any other academic integrity policy will be reported to the Office of Student Conduct.
+
+## Problem 1 (30 points): Benford's Law and Inverting CDFs
+
+In this problem, you will explore Benford's Law, which describes an interesting property that shows up in many disparate data domains.
+Most notably, it is frequently used to detect fraud in financial data, an application that you will explore at the end of this problem.
+
+### Part a: the Pareto distribution
+
+Consider a random variable $X$ with probability density function
+$$
+f(t) = \begin{cases}
+        \frac{3}{t^4} &\mbox{ if } t \ge 1 \\
+        0 &\mbox{ if } t < 1.
+        \end{cases}
+$$
+This is a special case of the Pareto distribution, which appears frequently in applications to economics and sociology.
+
+Implement this density as a function `pareto_density` in R.
+```{r}
+pareto_density <- function( t ) {
+
+ if (t >= 1) {
+   return(3/t^4)
+ }
+ if (t < 1) {
+   return(0)
+ }
+
+}
+
+```
+
+### Part b: deriving the CDF
+
+Derive the cumulative distribution function (CDF) of $X$, $F(t) = \Pr[ X \le t]$ and implement it in an R function `paretoCDF`.
+```{r}
+paretoCDF <- function( t ) {
+
+  if (t >= 1) {
+    return(-1/(t^3))
+  }
+  if (t < 1) {
+    return(0)
+  }
+
+}
+```
+
+### Part c: inverting the CDF
+
+Invert the CDF $F(t)$ defined above, and use the result to implement a function `random_pareto` that takes a single argument `n` (a positive integer) and returns a vector of $n$ independent copies of the variable $X$.
+You may assume that the argument `n` is a positive integer.
+
+```{r}
+random_pareto <- function(n) {
+
+  return((1/runif(n))^(1/3))
+
+}
+```
+
+### Part d: sanity check
+
+Here's a chance for free points!
+Let's check that your functions from parts (a), (b) and (c) are implemented correctly.
+
+Write code to generate 1000 independent copies of the Pareto RV $X$ defined above.
+Make a normalized histogram of those random variables, and overlay that histogram with the density function.
+Make sure that your histogram is normalized so that the histogram and density curve are on the same scale.
+You may use either the built-in R plotting functions or `ggplot2` to generate your plot.
+
+If you have implemented everything correctly, the histogram and the density should look very similar.
+If they do not, that is an indication that something has gone wrong!
+
+```{r}
+x_r <- random_pareto(1000)
+hist(x_r, breaks = 100, freq=FALSE)
+x <- seq(-10,0,0.1);
+curve(Vectorize(pareto_density)(x), add=TRUE, col='red' );
+
+```
+
+### Part e: leading digit
+
+Finally, use the function given below to extract the first digit of each number in your sample and make a plot showing how often each first digit appears. If you can (i.e. if your computer is powerful enough), try to use a larger `n` to get a more accurate plot. What do you observe? If you did this correctly, you should see that the leading digit is much more likely to be a low number like 1 or 2 than a higher digit like 8 or 9. This distribution is known as Benford's law, and under ***certain very specific situations*** can be used as evidence of fraud (there are a LOT of ways this can go wrong though, see [Nigrini's extensive text](https://nigrini.com/benfords-law/) on the matter for more information).
+
+```{r}
+# get first digit of number
+first_digit = function(x) floor(x/10^floor(log10(x)))
+
+n_1000 <- first_digit(x_r)
+hist(n_1000, freq = TRUE, breaks = 50)
+
+n_100000 <- first_digit(random_pareto(100000))
+hist(n_100000, freq = TRUE, breaks = 50)
+```
+
+
+
+## Problem 2 (30 points): the German Tank Problem
+
+The following problem is abstracted from a problem that was faced by statisticians working with the Allied armies in World War II, who were trying to determine how many tanks the German military had manufactured based on serial numbers on captured tanks.
+
+Consider random variables $X_1,X_2,\dots,X_n$ drawn i.i.d.\ according to $\operatorname{Unif}(0,\theta)$, where $\theta > 0$.
+That is, these RVs have the density function
+$$
+f(t) = \begin{cases} 1/\theta &\mbox{ if } 0 \le t \le \theta \\
+        0 &\mbox{ otherwise. }
+        \end{cases}
+$$
+
+### Part a: building intuition
+
+Here is some data generated according to the above model for some value of $\theta$:
+
+```
+26.43288 42.22526 50.14957 42.20638 80.20781
+52.85355 81.77021 72.73843 62.58631 35.84805
+```
+
+Consider the following three estimates for $\theta$:
+
+1. $\theta = 80$
+2. $\theta = 100$
+3. $\theta = 120$
+
+Which of these three estimates seems like the best one to you?
+Explain your reasoning for believing or disbelieving each of these three estimates.
+You don't *have* to use Monte Carlo (or any other particular method) to answer this question, but you are welcome to do so.
+
+***
+
+TODO: explanation, code, etc. goes here.
+
+***
+
+### Part b: estimating $\theta$
+
+Here are three different estimators for $\theta$:
+
+1. $\hat{\theta}_{\text{max}} = \max_{i \in \{1,2,\dots,n\}} X_i$
+2. $\hat{\theta}_{\text{mean}} = 2n^{-1} \sum_{i=1}^n X_i = 2 \bar{X}$
+3. $\hat{\theta}_{\text{mixed}} = \max\{ \hat{\theta}_{\text{max}}, \hat{\theta}_{\text{mean}} \}$.
+
+Implement these as functions `thetahat_max`, `thetahat_mean` and `thetahat_mixed`, respectively, in R.
+Each of these three functions should take a vector of data as its input and return the corresponding estimator computed on that data.
+You may assume that the argument `data` is a vector of nonnegative numerics.
+
+```{r}
+thetahat_max <- function( data ) {
+        #TODO: code goes here.
+}
+
+thetahat_mean <- function( data ) {
+        # TODO: code goes here.
+}
+
+thetahat_mixed <- function( data ) {
+        # TODO: code goes here.
+}
+```
+
+
+### Part c: Comparing Estimators
+
+Design and run a simulation experiment to compare the performance of these estimators.
+In particular, implement a Monte Carlo experiment based on 1000 independent trials each with sample size $n=20$ and $\theta=1$.
+On each trial, generate data from the model, apply the above three estimators to that data, and record the squared error between the estimates and the true value $\theta =1$.
+Compare the squared error, averaged over the 1000 replicates, for each of the three estimators and interpret your results. Which estimator did best?
+A few sentences is plenty here.
+
+```{r}
+
+#TODO: code goes here
+
+```
+                
+***
+
+TODO: comparison and interpretation goes here.
+
+***
+
+
+## Problem 3 (15 points): Spotify shuffle algorithm
+
+Did you know the popular music streaming platform Spotify [hires professional music curators to create playlists for them](https://playlistradar.com/spotify-101-understanding-the-spotify-playlist-landscape/)?
+Interestingly, if you shuffle some of the playlists created by Spotify's team, it will *always shuffle through the first 10 songs* before shuffling the rest of the playlist**.
+Don't believe me? Try it yourself: [here's one example](https://open.spotify.com/playlist/37i9dQZF1DX80MfQNTNVNZ), [here's another](https://open.spotify.com/playlist/37i9dQZF1DX59NCqCqJtoH), [here's a third](https://open.spotify.com/playlist/37i9dQZF1DXcbAIldMQMIs).
+Go to any of these playlists, shuffle the playlist, and it will shuffle the first 10 before shuffling anything else.
+If you switch to a different playlist and then switch back, it will again shuffle the first 10 (in a different order this time) before shuffling any other songs.
+This only works with certain playlists created by Spotify (it will not work with any user created playlists).
+
+[Other people have also noticed this too](https://community.spotify.com/t5/Android/Shuffle-play-plays-first-10-songs-first-before-playing-other/td-p/5065010).
+[Here's another example](https://community.spotify.com/t5/Desktop-Windows/Shuffle-plays-first-10-songs/td-p/5181291).
+What are the odds that this is happening by chance?
+Did they change how the shuffle algorithm works on their own playlists to prioritize songs they think will be more popular with listeners?
+Apple has [done a similar thing in the past](https://www.businessinsider.com/spotify-made-shuffle-feature-less-random-to-actually-feel-random-2020-3) with their iTunes shuffle algorithm to improve listener satisfaction, so why not Spotify?
+
+Let's test this. Consider a playlist of length $N$ ($N>10$).
+Use Monte Carlo estimation to find the (approximate) probability that a random permutation of this playlist will start with the first 10 songs in some random order for several different values of $N$ and plot the results.
+At what (approximate) value of $N$ will the probability of this happening be less than $0.01$?
+At what (approximate) point will it be less than 1 in a million?
+
+***
+
+TODO: code, explanation, etc. goes here.
+
+***
